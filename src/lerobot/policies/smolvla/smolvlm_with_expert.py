@@ -1,3 +1,5 @@
+#MODEL
+
 # Copyright 2025 The HuggingFace Inc. team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,12 +101,16 @@ class SmolVLMWithExpertModel(nn.Module):
             config = AutoConfig.from_pretrained(model_id)
             self.vlm = SmolVLMForConditionalGeneration(config=config)
         self.processor = AutoProcessor.from_pretrained(model_id)
+
+        #layer skipping
         if num_vlm_layers > 0:
             print(f"Reducing the number of VLM layers to {num_vlm_layers} ...")
             self.get_vlm_model().text_model.layers = self.get_vlm_model().text_model.layers[:num_vlm_layers]
         self.num_vlm_layers = len(self.get_vlm_model().text_model.layers)
         self.config = config
+
         # Smaller lm expert
+
         lm_expert_config = copy.deepcopy(config.text_config)
         hidden_size = lm_expert_config.hidden_size
         lm_expert_config.hidden_size = int(hidden_size * expert_width_multiplier)  # hidden_size // 2
@@ -121,9 +127,13 @@ class SmolVLMWithExpertModel(nn.Module):
         self.self_attn_every_n_layers = self_attn_every_n_layers
         if "cross" in attention_mode:
             # Reshape qkv projections to have the same input dimension as the vlm
+
+            #interleaved cross and self-attention layers smenjivanje
             for layer_idx in range(len(self.lm_expert.layers)):
-                if self.self_attn_every_n_layers > 0 and layer_idx % self.self_attn_every_n_layers == 0:
-                    continue
+                if self.self_attn_every_n_layers > 0 and layer_idx % self.self_attn_every_n_layers == 0:   #0,2,4,6.. za self.self_attn_every_n_layers=2
+                    continue            #self-attention
+
+                #promena K i V projekcije kako bi primale VLM reprezentacije: cross-attention za neparne 1,3,5... 
                 self.lm_expert.layers[layer_idx].self_attn.k_proj = nn.Linear(
                     config.text_config.num_key_value_heads * config.text_config.head_dim,
                     lm_expert_config.num_key_value_heads * lm_expert_config.head_dim,
@@ -433,6 +443,7 @@ class SmolVLMWithExpertModel(nn.Module):
             past_key_values = DynamicCache()
 
         # RMSNorm
+        #da li se gleda CA ili SA
         num_layers = self.num_vlm_layers
         head_dim = self.vlm.config.text_config.head_dim
         for layer_idx in range(num_layers):

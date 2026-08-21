@@ -278,12 +278,12 @@ def rollout(
             # Infer "task" from sub-environments (prefer natural language description).
             # env.call() works with both SyncVectorEnv and AsyncVectorEnv.
             try:
-                observation["task"] = list(env.call("task_description"))
+                observation["task"] = list(env.call("task_description"))             #lista environmenta koji rade zajedno, pozivanje nad svakim
             except (AttributeError, NotImplementedError):
                 try:
-                    observation["task"] = list(env.call("task"))
+                    observation["task"] = list(env.call("task"))                    #isto samo za task a ne task_description
                 except (AttributeError, NotImplementedError):
-                    observation["task"] = [""] * env.num_envs
+                    observation["task"] = ["Push the T-shaped block onto the T-shaped target."] * env.num_envs                          #MOJA IZMENA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
             # Apply environment-specific preprocessing (e.g., LiberoProcessorStep for LIBERO)
             observation = env_preprocessor(observation)
